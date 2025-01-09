@@ -1,9 +1,6 @@
 package cn.panda.entityanalyzer.command;
 
 import cn.panda.entityanalyzer.EntityAnalyzerPlugin;
-import cn.panda.entityanalyzer.listener.ClusterSelectionListener;
-import cn.panda.entityanalyzer.task.KMeansAnalysisTask;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -20,28 +17,28 @@ public class AnalyzeEntitiesCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "§c此命令只能由玩家执行。");
+            sender.sendMessage(plugin.getMessageManager().getMessage("only-players-execute"));
             return true;
         }
 
         Player player = (Player) sender;
+        int k = plugin.getConfigManager().getDefaultClusterCount();
 
-        int k = 5; // 默认聚类数量
         if (args.length > 0) {
             try {
                 k = Integer.parseInt(args[0]);
                 if (k <= 0) {
-                    player.sendMessage(ChatColor.RED + "§c聚类数量必须大于 0。");
+                    player.sendMessage(plugin.getMessageManager().getMessage("invalid-cluster-count"));
                     return true;
                 }
             } catch (NumberFormatException e) {
-                player.sendMessage(ChatColor.RED + "§c无效的聚类数量。请输入一个数字。");
+                player.sendMessage(plugin.getMessageManager().getMessage("invalid-cluster-count-format"));
                 return true;
             }
         }
 
-        player.sendMessage(ChatColor.YELLOW + "§e正在进行实体聚类分析，请稍候...");
-        new KMeansAnalysisTask(plugin, player.getWorld(), k, player).runTaskAsynchronously(plugin);
+        player.sendMessage(plugin.getMessageManager().getMessage("analyzing-entities"));
+        new cn.panda.entityanalyzer.task.KMeansAnalysisTask(plugin, player.getWorld(), k, player).runTaskAsynchronously(plugin);
 
         return true;
     }

@@ -1,7 +1,6 @@
 package cn.panda.entityanalyzer.task;
 
 import cn.panda.entityanalyzer.EntityAnalyzerPlugin;
-import cn.panda.entityanalyzer.kmeans.DistanceCalculator;
 import cn.panda.entityanalyzer.kmeans.KMeans;
 import cn.panda.entityanalyzer.kmeans.KMeansResult;
 import cn.panda.entityanalyzer.kmeans.Point;
@@ -10,7 +9,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -27,7 +25,7 @@ public class KMeansAnalysisTask extends BukkitRunnable {
 
     private final EntityAnalyzerPlugin plugin;
     private final World world;
-    private final int k;
+    private int k;
     private final Player player;
     private Map<Point, List<Entity>> assignmentsWithEntities; // 存储包含实体的聚类结果
 
@@ -46,12 +44,19 @@ public class KMeansAnalysisTask extends BukkitRunnable {
                 .collect(Collectors.toList());
 
         if (entities.isEmpty()) {
-            Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(ChatColor.YELLOW + "§e当前世界中没有可分析的实体。"));
+            Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(plugin.getMessageManager().getMessage("no-entities-to-analyze")));
             return;
         }
 
-        Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(ChatColor.YELLOW + "§e正在执行 K-means 聚类算法..."));
-        KMeans kMeans = new KMeans(entities, k);
+        // 如果 k 为 -1，则设置为实体数量，但不小于 1
+        if (k == -1) {
+            k = Math.max(1, entities.size());
+        }
+
+        final int finalK = k; // 确保 k 在 lambda 表达式中是 final 的
+
+        Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(plugin.getMessageManager().getMessage("analyzing-entities")));
+        KMeans kMeans = new KMeans(entities, finalK);
         KMeansResult result = kMeans.run(100);
         Map<Point, List<Point>> assignments = result.getAssignments();
 
@@ -72,24 +77,29 @@ public class KMeansAnalysisTask extends BukkitRunnable {
         }
 
         Bukkit.getScheduler().runTask(plugin, () -> {
-            player.sendMessage(ChatColor.GREEN + "§a实体聚类分析完成！");
+            player.sendMessage(plugin.getMessageManager().getMessage("analysis-complete"));
 
-            Inventory gui = Bukkit.createInventory(null, Math.min(54, (assignmentsWithEntities.size() / 9 + (assignmentsWithEntities.size() % 9 == 0 ? 0 : 1)) * 9), ChatColor.DARK_AQUA + "§3实体密度分析结果");
+            int numClusters = assignmentsWithEntities.size();
+            int inventorySize = Math.min(54, (numClusters / 9 + (numClusters % 9 == 0 ? 0 : 1)) * 9);
+            Inventory gui = Bukkit.createInventory(null, inventorySize, plugin.getMessageManager().getMessage("analysis-result-title"));
 
             int slot = 0;
+            Material clusterItemMaterial = plugin.getConfigManager().getClusterItemMaterial();
             for (Map.Entry<Point, List<Entity>> entry : assignmentsWithEntities.entrySet()) {
                 Point centroid = entry.getKey();
                 List<Entity> entitiesInCluster = entry.getValue();
                 int entityCount = entitiesInCluster.size();
 
-                if (entityCount > 0) {
-                    ItemStack item = new ItemStack(Material.COMPASS);
+                if (entityCount > 0 && slot < inventorySize) { // 关键修改：添加边界检查
+                    ItemStack item = new ItemStack(clusterItemMaterial);
                     ItemMeta meta = item.getItemMeta();
-                    meta.setDisplayName(ChatColor.AQUA + "§b高密度区域 #" + (slot + 1));
+                    meta.setDisplayName(plugin.getMessageManager().getMessage("cluster-item-name", "%index%", String.valueOf(slot + 1)));
                     List<String> lore = new ArrayList<>();
-                    lore.add(ChatColor.GRAY + "§7包含实体数量: " + ChatColor.YELLOW + entityCount);
-                    lore.add(ChatColor.GRAY + "§7中心坐标: " + ChatColor.YELLOW + String.format("%.0f, %.0f", centroid.getX(), centroid.getZ()));
-                    lore.add(ChatColor.GREEN + "§a点击传送并查看");
+                    lore.add(plugin.getMessageManager().getMessage("cluster-item-lore-count", "%count%", String.valueOf(entityCount)));
+                    lore.add(plugin.getMessageManager().getMessage("cluster-item-lore-coords",
+                            "%x%", String.format("%.0f", centroid.getX()),
+                            "%z%", String.format("%.0f", centroid.getZ())));
+                    lore.add(plugin.getMessageManager().getMessage("cluster-item-lore-action"));
                     meta.setLore(lore);
                     item.setItemMeta(meta);
                     gui.setItem(slot++, item);

@@ -1,0 +1,11 @@
+# 实体分析的默认聚类数量
+default-cluster-count: 5
+
+# 是否开启调试模式
+debug-mode: true
+
+# 用于显示聚类结果的物品材质
+cluster-item-material: COMPASS
+
+# 语言设置 (zh_CN, en_US)
+language: zh_CN
