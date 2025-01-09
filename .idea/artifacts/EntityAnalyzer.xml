@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="EntityAnalyzer">
+    <output-path>E:/Desktop/A_Minecraft_Server_1.12.2/plugins</output-path>
+    <root id="archive" name="EntityAnalyzer.jar">
+      <element id="module-output" name="EntityAnalyzer" />
+    </root>
+  </artifact>
+</component>
