@@ -5,7 +5,6 @@ import cn.panda.entityanalyzer.kmeans.KMeans;
 import cn.panda.entityanalyzer.kmeans.KMeansResult;
 import cn.panda.entityanalyzer.kmeans.Point;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
@@ -27,7 +26,6 @@ public class KMeansAnalysisTask extends BukkitRunnable {
     private final World world;
     private int k;
     private final Player player;
-    private Map<Point, List<Entity>> assignmentsWithEntities; // 存储包含实体的聚类结果
 
     public KMeansAnalysisTask(EntityAnalyzerPlugin plugin, World world, int k, Player player) {
         this.plugin = plugin;
@@ -38,59 +36,77 @@ public class KMeansAnalysisTask extends BukkitRunnable {
 
     @Override
     public void run() {
-        // 获取世界中所有的非玩家生物实体
-        List<Entity> entities = world.getLivingEntities().stream() // 使用 getLivingEntities() 包括更多类型的生物
-                .filter(entity -> !(entity instanceof Player))
-                .collect(Collectors.toList());
+        final int finalK = k;
 
-        if (entities.isEmpty()) {
-            Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(plugin.getMessageManager().getMessage("no-entities-to-analyze")));
-            return;
-        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            List<Entity> entities = world.getLivingEntities().stream()
+                    .filter(entity -> !(entity instanceof Player))
+                    .collect(Collectors.toList());
 
-        // 如果 k 为 -1，则设置为实体数量，但不小于 1
-        if (k == -1) {
-            k = Math.max(1, entities.size());
-        }
+            if (entities.isEmpty()) {
+                player.sendMessage(plugin.getMessageManager().getMessage("no-entities-to-analyze"));
+                return;
+            }
 
-        final int finalK = k; // 确保 k 在 lambda 表达式中是 final 的
+            int effectiveK = finalK;
+            if (effectiveK == -1) {
+                effectiveK = Math.max(1, entities.size());
+            }
 
-        Bukkit.getScheduler().runTask(plugin, () -> player.sendMessage(plugin.getMessageManager().getMessage("analyzing-entities")));
-        KMeans kMeans = new KMeans(entities, finalK);
-        KMeansResult result = kMeans.run(100);
+            final int finalEffectiveK = effectiveK;
+            final List<Entity> finalEntities = entities;
+
+            player.sendMessage(plugin.getMessageManager().getMessage("analyzing-entities"));
+
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    KMeans kMeans = new KMeans(finalEntities, finalEffectiveK);
+                    KMeansResult result = kMeans.run(100);
+
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        plugin.getClusterSelectionListener().setClusterEntities(convertToEntityClusterMap(result, finalEntities));
+                        displayAnalysisResults(result, finalEntities);
+                        player.sendMessage(plugin.getMessageManager().getMessage("analysis-complete"));
+                    });
+                }
+            }.runTaskAsynchronously(plugin);
+        });
+    }
+
+    private Map<Point, List<Entity>> convertToEntityClusterMap(KMeansResult result, List<Entity> allEntities) {
+        Map<Point, List<Entity>> assignmentsWithEntities = new HashMap<>();
         Map<Point, List<Point>> assignments = result.getAssignments();
-
-        // 将实体关联到聚类中心
-        assignmentsWithEntities = new HashMap<>();
         for (Map.Entry<Point, List<Point>> entry : assignments.entrySet()) {
             Point centroid = entry.getKey();
             List<Point> assignedPoints = entry.getValue();
             List<Entity> entitiesInCluster = new ArrayList<>();
-            for (Entity entity : entities) {
+            for (Entity entity : allEntities) {
                 Point entityPoint = new Point(entity.getLocation().getX(), entity.getLocation().getZ());
-                // 判断实体是否属于当前聚类 (之前被分配到该聚类)
                 if (assignedPoints.contains(entityPoint)) {
                     entitiesInCluster.add(entity);
                 }
             }
             assignmentsWithEntities.put(centroid, entitiesInCluster);
         }
+        return assignmentsWithEntities;
+    }
 
+    private void displayAnalysisResults(KMeansResult result, List<Entity> entities) {
         Bukkit.getScheduler().runTask(plugin, () -> {
-            player.sendMessage(plugin.getMessageManager().getMessage("analysis-complete"));
-
-            int numClusters = assignmentsWithEntities.size();
+            int numClusters = result.getCentroids().size();
             int inventorySize = Math.min(54, (numClusters / 9 + (numClusters % 9 == 0 ? 0 : 1)) * 9);
             Inventory gui = Bukkit.createInventory(null, inventorySize, plugin.getMessageManager().getMessage("analysis-result-title"));
 
             int slot = 0;
             Material clusterItemMaterial = plugin.getConfigManager().getClusterItemMaterial();
+            Map<Point, List<Entity>> assignmentsWithEntities = convertToEntityClusterMap(result, entities);
             for (Map.Entry<Point, List<Entity>> entry : assignmentsWithEntities.entrySet()) {
                 Point centroid = entry.getKey();
                 List<Entity> entitiesInCluster = entry.getValue();
                 int entityCount = entitiesInCluster.size();
 
-                if (entityCount > 0 && slot < inventorySize) { // 关键修改：添加边界检查
+                if (entityCount > 0 && slot < inventorySize) {
                     ItemStack item = new ItemStack(clusterItemMaterial);
                     ItemMeta meta = item.getItemMeta();
                     meta.setDisplayName(plugin.getMessageManager().getMessage("cluster-item-name", "%index%", String.valueOf(slot + 1)));
@@ -106,12 +122,6 @@ public class KMeansAnalysisTask extends BukkitRunnable {
                 }
             }
             player.openInventory(gui);
-            // 将包含实体的聚类结果传递给监听器
-            plugin.getClusterSelectionListener().setClusterEntities(assignmentsWithEntities);
         });
-    }
-
-    public Map<Point, List<Entity>> getAssignmentsWithEntities() {
-        return assignmentsWithEntities;
     }
 }

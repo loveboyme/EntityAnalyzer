@@ -4,6 +4,7 @@ import cn.panda.entityanalyzer.command.AnalyzeEntitiesCommand;
 import cn.panda.entityanalyzer.config.PluginConfig;
 import cn.panda.entityanalyzer.listener.ClusterSelectionListener;
 import cn.panda.entityanalyzer.message.MessageManager;
+import cn.panda.entityanalyzer.util.ParticleDisplay;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class EntityAnalyzerPlugin extends JavaPlugin {
@@ -11,6 +12,7 @@ public class EntityAnalyzerPlugin extends JavaPlugin {
     private PluginConfig configManager;
     private MessageManager messageManager;
     private ClusterSelectionListener clusterSelectionListener;
+    private ParticleDisplay particleDisplay; // Add this line
 
     @Override
     public void onEnable() {
@@ -21,6 +23,9 @@ public class EntityAnalyzerPlugin extends JavaPlugin {
 
         // 加载消息管理器
         messageManager = new MessageManager(this);
+
+        // Initialize ParticleDisplay
+        particleDisplay = new ParticleDisplay(this); // Initialize here
 
         // 注册命令
         AnalyzeEntitiesCommand analyzeEntitiesCommand = new AnalyzeEntitiesCommand(this);
@@ -41,6 +46,10 @@ public class EntityAnalyzerPlugin extends JavaPlugin {
 
     public ClusterSelectionListener getClusterSelectionListener() {
         return clusterSelectionListener;
+    }
+
+    public ParticleDisplay getParticleDisplay() { // Add this getter if needed
+        return particleDisplay;
     }
 
     @Override
