@@ -5,5 +5,9 @@ debug-mode: false
 
 cluster-item-material: COMPASS
 
+particle:
+  count: 1  # 示例：减少粒子数量
+  refresh-rate: 5 # 示例：降低刷新频率到每 5 ticks 一次
+
 # Language Setting (zh_CN, en_US)
 language: en_US

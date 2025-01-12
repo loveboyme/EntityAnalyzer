@@ -3,10 +3,13 @@ package cn.panda.entityanalyzer.util;
 import cn.panda.entityanalyzer.EntityAnalyzerPlugin;
 import cn.panda.entityanalyzer.kmeans.Point;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.List;
 import java.util.Map;
@@ -15,10 +18,14 @@ import java.util.WeakHashMap;
 public class ParticleDisplay {
 
     private final EntityAnalyzerPlugin plugin;
-    private final Map<Point, Integer> boundaryTaskIds = new WeakHashMap<>(); // 存储边界粒子任务的 ID
+    private final Map<Point, BukkitTask> boundaryTaskIds = new WeakHashMap<>(); // 存储边界粒子任务
+    private final int particleCount;
+    private final long particleRefreshRate;
 
     public ParticleDisplay(EntityAnalyzerPlugin plugin) {
         this.plugin = plugin;
+        this.particleCount = plugin.getConfigManager().getParticleCount();
+        this.particleRefreshRate = plugin.getConfigManager().getParticleRefreshRate();
     }
 
     // 显示指定聚类区域的边界粒子效果
@@ -29,7 +36,7 @@ public class ParticleDisplay {
 
         // 清除之前可能存在的边界粒子效果
         if (boundaryTaskIds.containsKey(centroid)) {
-            Bukkit.getScheduler().cancelTask(boundaryTaskIds.get(centroid));
+            boundaryTaskIds.get(centroid).cancel();
             boundaryTaskIds.remove(centroid);
         }
 
@@ -64,25 +71,24 @@ public class ParticleDisplay {
         }
 
         World world = player.getWorld();
-        final double finalMinX = minX; // 声明为 final
+        final double finalMinX = minX;
         final double finalMaxX = maxX;
         final double finalMinY = minY;
         final double finalMaxY = maxY;
         final double finalMinZ = minZ;
         final double finalMaxZ = maxZ;
-        final Particle finalParticleType = Particle.VILLAGER_HAPPY; // 声明为 final
-        final int finalParticleCount = 50; // **增加粒子数量**
-        final double finalDelta = 0.6; // 可以适当减小间隔，配合更多粒子
-        final int durationTicks = 20 * 30; // 持续时间设置为 30 秒
-        final Point finalCentroid = centroid; // 声明为 final，用于 runTaskLater
-        final Map<Point, Integer> finalBoundaryTaskIds = boundaryTaskIds; // 声明为 final，用于 runTaskLater
+        final Particle finalParticleType = Particle.VILLAGER_HAPPY;
+        final int finalParticleCount = particleCount;
+        final double finalDelta = 0.6;
+        final int durationTicks = 20 * 30;
+        final Point finalCentroid = centroid;
+        final Map<Point, BukkitTask> finalBoundaryTaskIds = boundaryTaskIds;
 
         if (plugin.getConfigManager().isDebugMode()) {
             plugin.getLogger().info("[ParticleDisplay] displayClusterBoundary：开始绘制粒子效果，持续 " + durationTicks / 20 + " 秒");
         }
 
-        // 使用 BukkitRunnable 来持续显示粒子效果
-        int taskId = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             // 绘制边框粒子
             for (double x = finalMinX - 0.2; x <= finalMaxX + 0.2; x += finalDelta) {
                 displayParticle(world, x, finalMinY, finalMinZ - 0.2, finalParticleType, finalParticleCount);
@@ -102,16 +108,16 @@ public class ParticleDisplay {
                 displayParticle(world, finalMinX - 0.2, finalMaxY, z, finalParticleType, finalParticleCount);
                 displayParticle(world, finalMaxX + 0.2, finalMaxY, z, finalParticleType, finalParticleCount);
             }
-        }, 0L, 3L).getTaskId(); // **提高刷新频率，例如每 3 个 ticks (0.15 秒) 刷新一次**
+        }, 0L, particleRefreshRate);
 
-        // 存储任务 ID，以便后续清除
-        boundaryTaskIds.put(centroid, taskId);
+        // 存储任务，以便后续清除
+        boundaryTaskIds.put(centroid, task);
 
         // 设置定时器，在指定时间后停止显示粒子效果
-        final int finalTaskId = taskId; // 声明为 final
+        final BukkitTask finalTask = task;
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (finalBoundaryTaskIds.containsKey(finalCentroid) && finalBoundaryTaskIds.get(finalCentroid) == finalTaskId) {
-                Bukkit.getScheduler().cancelTask(finalTaskId);
+            if (finalBoundaryTaskIds.containsKey(finalCentroid) && finalBoundaryTaskIds.get(finalCentroid).equals(finalTask)) {
+                finalTask.cancel();
                 finalBoundaryTaskIds.remove(finalCentroid);
                 if (plugin.getConfigManager().isDebugMode()) {
                     plugin.getLogger().info("[ParticleDisplay] displayClusterBoundary：粒子效果已停止。");
@@ -122,16 +128,22 @@ public class ParticleDisplay {
 
     // 在指定位置显示粒子效果
     private void displayParticle(World world, double x, double y, double z, Particle particle, int count) {
-        world.spawnParticle(particle, x, y, z, count, 0.1, 0.1, 0.1, 0.01);
-        if (plugin.getConfigManager().isDebugMode()) {
-            plugin.getLogger().info("[ParticleDisplay]   生成粒子 " + particle + "，位置：x=" + x + ", y=" + y + ", z=" + z);
+        Location location = new Location(world, x, y, z);
+        Block block = location.getBlock();
+        if (!block.getType().isSolid()) { // 检查目标位置是否不是固体方块
+            world.spawnParticle(particle, x, y, z, count, 0.01, 0.01, 0.01, 0.01);
+            if (plugin.getConfigManager().isDebugMode()) {
+                plugin.getLogger().info("[ParticleDisplay]   生成粒子 " + particle + "，位置：x=" + x + ", y=" + y + ", z=" + z);
+            }
+        } else if (plugin.getConfigManager().isDebugMode()) {
+            plugin.getLogger().info("[ParticleDisplay]   跳过生成粒子 " + particle + "，位置：x=" + x + ", y=" + y + ", z=" + z + "，因为方块是 " + block.getType());
         }
     }
 
     // 清除特定聚类的粒子效果
     public void clearBoundary(Point centroid) {
         if (boundaryTaskIds.containsKey(centroid)) {
-            Bukkit.getScheduler().cancelTask(boundaryTaskIds.get(centroid));
+            boundaryTaskIds.get(centroid).cancel();
             boundaryTaskIds.remove(centroid);
             if (plugin.getConfigManager().isDebugMode()) {
                 plugin.getLogger().info("[ParticleDisplay] 清除聚类 " + centroid + " 的粒子效果");
@@ -141,7 +153,7 @@ public class ParticleDisplay {
 
     // 清除所有显示的粒子效果
     public void clearAllBoundaries() {
-        boundaryTaskIds.values().forEach(Bukkit.getScheduler()::cancelTask);
+        boundaryTaskIds.values().forEach(BukkitTask::cancel);
         boundaryTaskIds.clear();
         if (plugin.getConfigManager().isDebugMode()) {
             plugin.getLogger().info("[ParticleDisplay] 清除所有聚类的粒子效果");

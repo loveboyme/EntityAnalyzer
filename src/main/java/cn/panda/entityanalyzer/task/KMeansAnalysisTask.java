@@ -66,7 +66,7 @@ public class KMeansAnalysisTask extends BukkitRunnable {
 
                     Bukkit.getScheduler().runTask(plugin, () -> {
                         plugin.getClusterSelectionListener().setClusterEntities(convertToEntityClusterMap(result, finalEntities));
-                        displayAnalysisResults(result, finalEntities);
+                        displayAnalysisResults(result, finalEntities); // 只调用一次
                         player.sendMessage(plugin.getMessageManager().getMessage("analysis-complete"));
                     });
                 }
