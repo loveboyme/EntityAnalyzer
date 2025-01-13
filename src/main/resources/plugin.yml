@@ -1,5 +1,5 @@
 name: EntityAnalyzer
-version: 1.0.2
+version: 1.0.3
 main: cn.panda.entityanalyzer.EntityAnalyzerPlugin
 commands:
   analyzeentities:

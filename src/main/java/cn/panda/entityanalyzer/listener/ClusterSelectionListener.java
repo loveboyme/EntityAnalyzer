@@ -73,7 +73,10 @@ public class ClusterSelectionListener implements Listener {
             if (matcher.find()) {
                 try {
                     int clusterIndex = Integer.parseInt(matcher.group()) - 1;
-                    plugin.getLogger().info("[onInventoryClick] 点击了分析结果物品: " + meta.getDisplayName() + ", 解析的聚类索引 (0-based): " + clusterIndex);
+
+                    if (plugin.getConfigManager().isDebugMode()) {
+                        plugin.getLogger().info("[onInventoryClick] 点击了分析结果物品: " + meta.getDisplayName() + ", 解析的聚类索引 (0-based): " + clusterIndex);
+                    }
 
                     int i = 0;
                     Point targetCentroid = null;
@@ -86,7 +89,11 @@ public class ClusterSelectionListener implements Listener {
                     }
 
                     if (targetCentroid != null) {
-                        plugin.getLogger().info("[onInventoryClick] 准备传送玩家 " + player.getName() + " 到 " + targetCentroid);
+
+                        if (plugin.getConfigManager().isDebugMode()) {
+                            plugin.getLogger().info("[onInventoryClick] 准备传送玩家 " + player.getName() + " 到 " + targetCentroid);
+                        }
+
                         Location teleportLocation = new Location(player.getWorld(), targetCentroid.getX(), player.getLocation().getY(), targetCentroid.getZ());
                         player.teleport(teleportLocation);
                         player.sendMessage(plugin.getMessageManager().getMessage("teleport-to-area"));

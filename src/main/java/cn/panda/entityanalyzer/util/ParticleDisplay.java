@@ -85,6 +85,7 @@ public class ParticleDisplay {
         final long finalParticleDuration = particleDuration;
         final Point finalCentroid = centroid;
         final Map<Point, BukkitTask> finalBoundaryTaskIds = boundaryTaskIds;
+        final Player finalPlayer = player; // 将 player 传递到 lambda 中
 
         if (plugin.getConfigManager().isDebugMode()) {
             plugin.getLogger().info("[ParticleDisplay] displayClusterBoundary：开始绘制粒子效果，持续 " + finalParticleDuration / 20 + " 秒");
@@ -93,22 +94,22 @@ public class ParticleDisplay {
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             // 绘制边框粒子
             for (double x = finalMinX - 0.2; x <= finalMaxX + 0.2; x += finalDelta) {
-                displayParticle(world, x, finalMinY, finalMinZ - 0.2, finalParticleType, finalParticleCount);
-                displayParticle(world, x, finalMaxY, finalMinZ - 0.2, finalParticleType, finalParticleCount);
-                displayParticle(world, x, finalMinY, finalMaxZ + 0.2, finalParticleType, finalParticleCount);
-                displayParticle(world, x, finalMaxY, finalMaxZ + 0.2, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, x, finalMinY, finalMinZ - 0.2, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, x, finalMaxY, finalMinZ - 0.2, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, x, finalMinY, finalMaxZ + 0.2, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, x, finalMaxY, finalMaxZ + 0.2, finalParticleType, finalParticleCount);
             }
             for (double y = finalMinY; y <= finalMaxY; y += finalDelta) {
-                displayParticle(world, finalMinX - 0.2, y, finalMinZ - 0.2, finalParticleType, finalParticleCount);
-                displayParticle(world, finalMaxX + 0.2, y, finalMinZ - 0.2, finalParticleType, finalParticleCount);
-                displayParticle(world, finalMinX - 0.2, y, finalMaxZ + 0.2, finalParticleType, finalParticleCount);
-                displayParticle(world, finalMaxX + 0.2, y, finalMaxZ + 0.2, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, finalMinX - 0.2, y, finalMinZ - 0.2, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, finalMaxX + 0.2, y, finalMinZ - 0.2, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, finalMinX - 0.2, y, finalMaxZ + 0.2, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, finalMaxX + 0.2, y, finalMaxZ + 0.2, finalParticleType, finalParticleCount);
             }
             for (double z = finalMinZ - 0.2; z <= finalMaxZ + 0.2; z += finalDelta) {
-                displayParticle(world, finalMinX - 0.2, finalMinY, z, finalParticleType, finalParticleCount);
-                displayParticle(world, finalMaxX + 0.2, finalMinY, z, finalParticleType, finalParticleCount);
-                displayParticle(world, finalMinX - 0.2, finalMaxY, z, finalParticleType, finalParticleCount);
-                displayParticle(world, finalMaxX + 0.2, finalMaxY, z, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, finalMinX - 0.2, finalMinY, z, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, finalMaxX + 0.2, finalMinY, z, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, finalMinX - 0.2, finalMaxY, z, finalParticleType, finalParticleCount);
+                displayParticle(finalPlayer, world, finalMaxX + 0.2, finalMaxY, z, finalParticleType, finalParticleCount);
             }
         }, 0L, particleRefreshRate);
 
@@ -128,14 +129,14 @@ public class ParticleDisplay {
         }, finalParticleDuration);
     }
 
-    // 在指定位置显示粒子效果
-    private void displayParticle(World world, double x, double y, double z, Particle particle, int count) {
+    // 在指定位置显示粒子效果，并指定观察者
+    private void displayParticle(Player player, World world, double x, double y, double z, Particle particle, int count) {
         Location location = new Location(world, x, y, z);
         Block block = location.getBlock();
         if (!block.getType().isSolid()) { // 检查目标位置是否不是固体方块
-            world.spawnParticle(particle, x, y, z, count, 0.01, 0.01, 0.01, 0.01);
+            player.spawnParticle(particle, x, y, z, count, 0.01, 0.01, 0.01, 0.01);
             if (plugin.getConfigManager().isDebugMode()) {
-                plugin.getLogger().info("[ParticleDisplay]   生成粒子 " + particle + "，位置：x=" + x + ", y=" + y + ", z=" + z);
+                plugin.getLogger().info("[ParticleDisplay]   生成粒子 " + particle + "，位置：x=" + x + ", y=" + y + ", z=" + z + " 给玩家 " + player.getName());
             }
         } else if (plugin.getConfigManager().isDebugMode()) {
             plugin.getLogger().info("[ParticleDisplay]   跳过生成粒子 " + particle + "，位置：x=" + x + ", y=" + y + ", z=" + z + "，因为方块是 " + block.getType());

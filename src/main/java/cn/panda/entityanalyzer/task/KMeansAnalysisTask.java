@@ -55,9 +55,6 @@ public class KMeansAnalysisTask extends BukkitRunnable {
 
             final int finalEffectiveK = effectiveK;
             final List<Entity> finalEntities = entities;
-
-            player.sendMessage(plugin.getMessageManager().getMessage("analyzing-entities"));
-
             new BukkitRunnable() {
                 @Override
                 public void run() {
