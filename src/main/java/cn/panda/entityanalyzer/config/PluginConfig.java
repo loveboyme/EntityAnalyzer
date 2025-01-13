@@ -10,8 +10,12 @@ public class PluginConfig {
     private int defaultClusterCount;
     private boolean debugMode;
     private Material clusterItemMaterial;
-    private int particleCount; // 新增：粒子数量
-    private long particleRefreshRate; // 新增：粒子刷新频率 (单位：ticks)
+    private boolean particleEnabled;
+    private int particleCount;
+    private long particleRefreshRate;
+    private long particleDuration;
+    private boolean glowingEnabled;
+    private long glowingDuration;
 
     public PluginConfig(EntityAnalyzerPlugin plugin) {
         this.plugin = plugin;
@@ -31,8 +35,14 @@ public class PluginConfig {
             plugin.getLogger().warning("无效的物品材质名称: " + materialName + ", 使用默认的指南针 (COMPASS)。");
             clusterItemMaterial = Material.COMPASS;
         }
-        particleCount = config.getInt("particle.count", 50); // 默认值可以根据需要调整
-        particleRefreshRate = config.getLong("particle.refresh-rate", 3L); // 默认值可以根据需要调整
+
+        particleEnabled = config.getBoolean("particle.enabled", true);
+        particleCount = config.getInt("particle.count", 50);
+        particleRefreshRate = config.getLong("particle.refresh-rate", 3L);
+        particleDuration = config.getLong("particle.duration", 600L);
+
+        glowingEnabled = config.getBoolean("glowing.enabled", true);
+        glowingDuration = config.getLong("glowing.duration", 200L);
     }
 
     public int getDefaultClusterCount() {
@@ -47,11 +57,27 @@ public class PluginConfig {
         return clusterItemMaterial;
     }
 
+    public boolean isParticleEnabled() {
+        return particleEnabled;
+    }
+
     public int getParticleCount() {
         return particleCount;
     }
 
     public long getParticleRefreshRate() {
         return particleRefreshRate;
+    }
+
+    public long getParticleDuration() {
+        return particleDuration;
+    }
+
+    public boolean isGlowingEnabled() {
+        return glowingEnabled;
+    }
+
+    public long getGlowingDuration() {
+        return glowingDuration;
     }
 }

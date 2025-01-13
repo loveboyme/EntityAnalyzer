@@ -21,11 +21,13 @@ public class ParticleDisplay {
     private final Map<Point, BukkitTask> boundaryTaskIds = new WeakHashMap<>(); // 存储边界粒子任务
     private final int particleCount;
     private final long particleRefreshRate;
+    private final long particleDuration;
 
     public ParticleDisplay(EntityAnalyzerPlugin plugin) {
         this.plugin = plugin;
         this.particleCount = plugin.getConfigManager().getParticleCount();
         this.particleRefreshRate = plugin.getConfigManager().getParticleRefreshRate();
+        this.particleDuration = plugin.getConfigManager().getParticleDuration();
     }
 
     // 显示指定聚类区域的边界粒子效果
@@ -80,12 +82,12 @@ public class ParticleDisplay {
         final Particle finalParticleType = Particle.VILLAGER_HAPPY;
         final int finalParticleCount = particleCount;
         final double finalDelta = 0.6;
-        final int durationTicks = 20 * 30;
+        final long finalParticleDuration = particleDuration;
         final Point finalCentroid = centroid;
         final Map<Point, BukkitTask> finalBoundaryTaskIds = boundaryTaskIds;
 
         if (plugin.getConfigManager().isDebugMode()) {
-            plugin.getLogger().info("[ParticleDisplay] displayClusterBoundary：开始绘制粒子效果，持续 " + durationTicks / 20 + " 秒");
+            plugin.getLogger().info("[ParticleDisplay] displayClusterBoundary：开始绘制粒子效果，持续 " + finalParticleDuration / 20 + " 秒");
         }
 
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -123,7 +125,7 @@ public class ParticleDisplay {
                     plugin.getLogger().info("[ParticleDisplay] displayClusterBoundary：粒子效果已停止。");
                 }
             }
-        }, durationTicks);
+        }, finalParticleDuration);
     }
 
     // 在指定位置显示粒子效果

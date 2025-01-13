@@ -34,7 +34,7 @@ public class ClusterSelectionListener implements Listener {
 
     public ClusterSelectionListener(EntityAnalyzerPlugin plugin) {
         this.plugin = plugin;
-        this.particleDisplay = new ParticleDisplay(plugin);
+        this.particleDisplay = plugin.getParticleDisplay();
     }
 
     // 接收聚类结果
@@ -154,60 +154,64 @@ public class ClusterSelectionListener implements Listener {
             return;
         }
 
-        for (Entity entity : entitiesToHighlight) {
-            if (entity.isValid()) {
-                if (plugin.getConfigManager().isDebugMode()) {
-                    plugin.getLogger().info("[ClusterSelectionListener]   尝试高亮实体 ID: " + entity.getEntityId() + ", 类型: " + entity.getType());
-                }
-                if (entity instanceof Item) {
-                    ((Item) entity).setGlowing(true);
-                    if (plugin.getConfigManager().isDebugMode()) {
-                        plugin.getLogger().info("[ClusterSelectionListener]     物品设置为发光");
-                    }
-                } else if (entity instanceof LivingEntity) {
-                    ((LivingEntity) entity).addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 20 * 10, 0));
-                    if (plugin.getConfigManager().isDebugMode()) {
-                        plugin.getLogger().info("[ClusterSelectionListener]     生物添加发光效果");
-                    }
-                }
-            } else {
-                plugin.getLogger().warning("[ClusterSelectionListener]   尝试高亮显示的实体 " + entity.getEntityId() + " 无效，已跳过");
-            }
-        }
-
-        // 停止高亮
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            if (plugin.getConfigManager().isDebugMode()) {
-                plugin.getLogger().info("[ClusterSelectionListener] highlightEntities：停止高亮显示");
-            }
+        if (plugin.getConfigManager().isGlowingEnabled()) {
             for (Entity entity : entitiesToHighlight) {
                 if (entity.isValid()) {
                     if (plugin.getConfigManager().isDebugMode()) {
-                        plugin.getLogger().info("[ClusterSelectionListener]   尝试移除高亮实体 ID: " + entity.getEntityId() + ", 类型: " + entity.getType());
+                        plugin.getLogger().info("[ClusterSelectionListener]   尝试高亮实体 ID: " + entity.getEntityId() + ", 类型: " + entity.getType());
                     }
                     if (entity instanceof Item) {
-                        ((Item) entity).setGlowing(false);
+                        ((Item) entity).setGlowing(true);
                         if (plugin.getConfigManager().isDebugMode()) {
-                            plugin.getLogger().info("[ClusterSelectionListener]     物品移除发光");
+                            plugin.getLogger().info("[ClusterSelectionListener]     物品设置为发光");
                         }
                     } else if (entity instanceof LivingEntity) {
-                        ((LivingEntity) entity).removePotionEffect(PotionEffectType.GLOWING);
+                        ((LivingEntity) entity).addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, (int) plugin.getConfigManager().getGlowingDuration(), 0));
                         if (plugin.getConfigManager().isDebugMode()) {
-                            plugin.getLogger().info("[ClusterSelectionListener]     生物移除发光效果");
+                            plugin.getLogger().info("[ClusterSelectionListener]     生物添加发光效果，持续 " + plugin.getConfigManager().getGlowingDuration() + " ticks");
+                        }
+                    }
+                } else {
+                    plugin.getLogger().warning("[ClusterSelectionListener]   尝试高亮显示的实体 " + entity.getEntityId() + " 无效，已跳过");
+                }
+            }
+
+            // 停止高亮
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (plugin.getConfigManager().isDebugMode()) {
+                    plugin.getLogger().info("[ClusterSelectionListener] highlightEntities：停止高亮显示");
+                }
+                for (Entity entity : entitiesToHighlight) {
+                    if (entity.isValid()) {
+                        if (plugin.getConfigManager().isDebugMode()) {
+                            plugin.getLogger().info("[ClusterSelectionListener]   尝试移除高亮实体 ID: " + entity.getEntityId() + ", 类型: " + entity.getType());
+                        }
+                        if (entity instanceof Item) {
+                            ((Item) entity).setGlowing(false);
+                            if (plugin.getConfigManager().isDebugMode()) {
+                                plugin.getLogger().info("[ClusterSelectionListener]     物品移除发光");
+                            }
+                        } else if (entity instanceof LivingEntity) {
+                            ((LivingEntity) entity).removePotionEffect(PotionEffectType.GLOWING);
+                            if (plugin.getConfigManager().isDebugMode()) {
+                                plugin.getLogger().info("[ClusterSelectionListener]     生物移除发光效果");
+                            }
                         }
                     }
                 }
-            }
-        }, 20 * 10);
+            }, plugin.getConfigManager().getGlowingDuration());
+        }
     }
 
     // 显示指定聚类区域的边界粒子效果
     private void displayClusterBoundary(Player player, Point centroid) {
-        if (!clusterEntities.containsKey(centroid)) {
-            plugin.getLogger().warning("[ClusterSelectionListener] displayClusterBoundary：找不到中心点 " + centroid + " 对应的聚类");
-            return;
+        if (plugin.getConfigManager().isParticleEnabled()) {
+            if (!clusterEntities.containsKey(centroid)) {
+                plugin.getLogger().warning("[ClusterSelectionListener] displayClusterBoundary：找不到中心点 " + centroid + " 对应的聚类");
+                return;
+            }
+            List<Entity> entitiesInCluster = clusterEntities.get(centroid);
+            particleDisplay.displayClusterBoundary(player, centroid, entitiesInCluster);
         }
-        List<Entity> entitiesInCluster = clusterEntities.get(centroid);
-        particleDisplay.displayClusterBoundary(player, centroid, entitiesInCluster);
     }
 }

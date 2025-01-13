@@ -1,7 +1,6 @@
 name: EntityAnalyzer
 version: 1.0.2
 main: cn.panda.entityanalyzer.EntityAnalyzerPlugin
-api-version: 1.12
 commands:
   analyzeentities:
     description: 对世界中的实体进行聚类分析，找出潜在的性能瓶颈区域。
